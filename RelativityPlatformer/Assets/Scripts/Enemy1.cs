@@ -93,10 +93,11 @@ public class Enemy1 : MonoBehaviour {
 			Vector2 rayOrigin = (directionX == -1) ? raycastOrigins.bottomLeft : raycastOrigins.bottomRight;
 			rayOrigin += Vector2.up * (horizontalRaySpacing * i);
 			RaycastHit2D hit = Physics2D.Raycast (rayOrigin, Vector2.right * directionX, rayLength, collisionMask);
+			RaycastHit2D hitSlope = Physics2D.Raycast (rayOrigin, Vector2.right * directionX, rayLength, slopeMask);
 
 			Debug.DrawRay (rayOrigin, Vector2.right * directionX * rayLength, Color.red);
 
-			if (hit) {
+			if (hit || hitSlope) {
 				velocity.x = (hit.distance - skinWidth) * directionX;
 
 				//this means that another raycast in the loop can't accidentally hit a further object than the one in this instance

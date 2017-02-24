@@ -13,8 +13,8 @@ public class Checkpoint : MonoBehaviour {
 		checkpointPos.z = 0;
 	}
 
-	void OnTriggerEnter(Collider col) {
-		Debug.Log ("Colliding!");
+	void OnTriggerEnter2D(Collider2D col) {
+		Debug.Log (col.tag);
 		if (col.tag == "Player") {
 			Debug.Log ("Saving!");
 			checkpointPos.x = transform.position.x;

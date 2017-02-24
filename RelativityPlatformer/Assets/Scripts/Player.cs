@@ -44,9 +44,6 @@ public class Player : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		if (Checkpoint.checkpointReached) {
-			transform.position = Checkpoint.checkpointPos;
-		}
 		moveAccel = 10;
 		controller = GetComponent<Controller2D>();
 		gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
@@ -58,7 +55,7 @@ public class Player : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		if (transform.position.y < -5) {
+		if (transform.position.y < -8) {
 			Controller2D.health = 0;
 			isInvuln = false;
 			SceneManager.LoadScene ("Main");

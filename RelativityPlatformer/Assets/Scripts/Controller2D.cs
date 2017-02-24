@@ -40,17 +40,22 @@ public class Controller2D : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		if (Checkpoint.checkpointReached) {
-			cam.transform.position = Checkpoint.checkpointPos;
-		}
 		col = GetComponent<BoxCollider2D>();
 		CalculateRaySpacing ();
 		camPos = new Vector3(0,0,-10);
+		if (Checkpoint.checkpointReached) {
+			transform.position = Checkpoint.checkpointPos;
+			camPos.x = Checkpoint.checkpointPos.x;
+			cam.transform.position = camPos;
+			backgroundPos.x = 0.75f * Checkpoint.checkpointPos.x;
+			background.transform.position = backgroundPos;
+		}
 		camSize = cam.orthographicSize;
 		health = 5;
 	}
 
 	public void Move(Vector3 velocity) {
+		Debug.Log (cam.transform.position);
 		collisions.Reset ();
 		UpdateRaycastOrigins ();
 		collisions.velocityOld = velocity;
@@ -240,14 +245,23 @@ public class Controller2D : MonoBehaviour {
 
 			Debug.DrawRay (rayOrigin, Vector2.up * directionY * rayLength, Color.red);
 			if (hitSlope) {
-				velocity.y = (hitSlope.distance - skinWidth) * directionY;
+				float slopeAngle = Vector2.Angle (hitSlope.normal, Vector2.up);
+
+
 
 				//this means that another raycast in the loop can't accidentally hit a further object than the one in this instance
 				rayLength = hitSlope.distance;
-				if (directionY == -1)
-					collisions.below = true;
-				if (directionY == 1)
-					collisions.above = true;
+				if (slopeAngle <= maxDescendAngle) {
+					velocity.y = (hitSlope.distance - skinWidth) * directionY;
+					if (directionY == -1)
+						collisions.below = true;
+					if (directionY == 1)
+						collisions.above = true;
+				} else if (slopeAngle > maxDescendAngle) {
+					float moveDistance = Mathf.Abs (velocity.y);
+					velocity.x = Mathf.Sin (slopeAngle * Mathf.Deg2Rad) * moveDistance * Mathf.Sign (hitSlope.normal.x);
+					velocity.y = Mathf.Cos (slopeAngle * Mathf.Deg2Rad) * moveDistance * Mathf.Sign (velocity.y);
+				}
 			}
 			if (hit) {
 				velocity.y = (hit.distance - skinWidth) * directionY;
@@ -256,6 +270,7 @@ public class Controller2D : MonoBehaviour {
 				rayLength = hit.distance;
 
 				if (collisions.climbingSlope) {
+					Debug.Log (collisions.slopeAngle);
 					velocity.x = velocity.y / Mathf.Tan (collisions.slopeAngle * Mathf.Deg2Rad) * Mathf.Sign (velocity.x);
 				}
 
