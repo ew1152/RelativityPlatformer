@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Enemy1 : MonoBehaviour {
+public class Enemy2 : MonoBehaviour {
 
 	public LayerMask collisionMask;
 	public LayerMask slopeMask;
@@ -29,7 +29,9 @@ public class Enemy1 : MonoBehaviour {
 	float direction;
 
 	Vector3 startingPos;
-//	bool canTurn;
+
+	bool playerEffective;
+	float vulnTimer;
 
 	Color enemyShading;
 
@@ -41,29 +43,40 @@ public class Enemy1 : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-//		canTurn = true;
+		vulnTimer = 0;
+		playerEffective = false;
 		col = GetComponent<BoxCollider2D>();
 		CalculateRaySpacing ();
 		gravity = -50;
 		moveSpeed = 5;
 		movingLeft = true;
 		direction = -1;
-		enemyShading.r = 1;
-		enemyShading.g = 1;
-		enemyShading.b = 1;
+		enemyShading.r = gameObject.GetComponent<SpriteRenderer>().color.r;
+		enemyShading.g = gameObject.GetComponent<SpriteRenderer>().color.g;
+		enemyShading.b = gameObject.GetComponent<SpriteRenderer>().color.b;
 		enemyShading.a = 1;
 
 		startingPos.x = transform.position.x;
 		startingPos.y = transform.position.y;
 		startingPos.z = transform.position.z;
 	}
-		
+
 
 	public void Update() {
 		if (Mathf.Abs (Player.xPos - startingPos.x) > 30 && Mathf.Abs (Player.xPos - transform.position.x) > 30) {
 			transform.position = startingPos;
 			direction = Mathf.Sign (Player.xPos - startingPos.x);
 		} else {
+			if (Mathf.Abs(Player.lightCounter) > 0) {
+				playerEffective = true;
+				Vulnerable ();
+			} else {
+				playerEffective = false;
+				enemyShading.g = 0;
+				enemyShading.a = 1;
+				vulnTimer = 0;
+				gameObject.GetComponent<SpriteRenderer>().color = enemyShading;
+			}
 			if (collisions.below || collisions.above)
 				velocity.y = 0;
 			if (collisions.left)
@@ -78,7 +91,7 @@ public class Enemy1 : MonoBehaviour {
 		}
 
 	}
-		
+
 	void Move(Vector3 velocity) {
 		collisions.Reset ();
 		UpdateRaycastOrigins ();
@@ -89,12 +102,20 @@ public class Enemy1 : MonoBehaviour {
 		if (velocity.y != 0)
 			VerticalCollisions (ref velocity);
 
-		enemyShading.r = 1 - Mathf.Abs(0.05f * Player.lightCounter);
-		enemyShading.g = 1 - Mathf.Abs(0.05f * Player.lightCounter);
-		enemyShading.b = 1 - Mathf.Abs(0.05f * Player.lightCounter);
-		gameObject.GetComponent<SpriteRenderer>().color = enemyShading;
+
 
 		transform.Translate (velocity);
+	}
+
+	void Vulnerable() {
+		enemyShading.g = Player.lightCounter/3;
+		vulnTimer += 1;
+		if (vulnTimer % 3 >= 2) {
+			enemyShading.a = 1;
+		} else {
+			enemyShading.a = 0;
+		}
+		gameObject.GetComponent<SpriteRenderer>().color = enemyShading;
 	}
 
 	void HorizontalCollisions(ref Vector3 velocity) {
@@ -160,7 +181,7 @@ public class Enemy1 : MonoBehaviour {
 
 			RaycastHit2D hitPlayer = Physics2D.Raycast (rayOrigin, Vector2.right * directionX, rayLength, playerMask);
 
-			if (hitPlayer) {
+			if (hitPlayer && !playerEffective) {
 				Debug.Log ("Hitting player!");
 				hitPlayer.collider.gameObject.SendMessage ("stationaryHitEnemy", velocity.x);
 			}
@@ -213,13 +234,13 @@ public class Enemy1 : MonoBehaviour {
 
 			//makes sure enemies can turn on reaching ledge
 
-//			if (!hit && !hitSlope && canTurn) {
-//				if (direction == -1)
-//					collisions.left = true;
-//				if (direction == 1)
-//					collisions.right = true;
-//				StartCoroutine ("turnTimer");
-//			}
+			//			if (!hit && !hitSlope && canTurn) {
+			//				if (direction == -1)
+			//					collisions.left = true;
+			//				if (direction == 1)
+			//					collisions.right = true;
+			//				StartCoroutine ("turnTimer");
+			//			}
 
 		}
 	}
@@ -270,11 +291,11 @@ public class Enemy1 : MonoBehaviour {
 		}
 	}
 
-//	IEnumerator turnTimer() {
-//		canTurn = false;
-//		yield return new WaitForSeconds (0.2f);
-//		canTurn = true;
-//	}
+	//	IEnumerator turnTimer() {
+	//		canTurn = false;
+	//		yield return new WaitForSeconds (0.2f);
+	//		canTurn = true;
+	//	}
 
 	void UpdateRaycastOrigins() {
 		Bounds bounds = col.bounds;
@@ -330,6 +351,4 @@ public class Enemy1 : MonoBehaviour {
 	void Death() {
 		Destroy (gameObject);
 	}
-		
-		
 }

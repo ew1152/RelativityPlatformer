@@ -5,44 +5,83 @@ using UnityEngine;
 [RequireComponent (typeof (BoxCollider2D))]
 public class Controller2D : MonoBehaviour {
 
+	//layermask used for standard collisions with ground, walls, etc.
 	public LayerMask collisionMask;
+	//layermask used for collisions with slopes
 	public LayerMask slopeMask;
+	//layermask used when being damaged by enemy
 	public LayerMask enemyCollisionMask;
+	//layermask used when killing enemy
 	public LayerMask enemyHurtboxMask;
+	//layermask used when interacting with second enemy type
+	public LayerMask enemyMask2;
 
+	//amount of health the player has
 	public static int health;
+	//amount of lives the player has
+	public static int lives = 5;
 
+	//value used for small inset on bounds of player width/height from which raycasts are sent;
+	//this is to minimize complications with raycasts originating exactly on their point of collision
 	const float skinWidth = .02f;
+	//number of raycasts that are sent out from the side of the player when moving; this allows control over how
+	//thorough the process for collision detection needs to be; the more raycasts being sent, the thinner the
+	//vertical distance between each raycast, and the thinner an obstacle would have to be to go undetected by
+	//these raycasts.
 	public int horizontalRayCount = 4;
+	//same as for horizontalRayCount, but for vertical raycasts
 	public int verticalRayCount = 4;
-
-	float maxClimbAngle = 70;
-	float maxDescendAngle = 60;
-
+	//the distance between each horizontal raycast sent out from the player. This is calculated in CalculateRaySpacing()
+	//based on the horizontalRayCount integer and the height of the player.
 	float horizontalRaySpacing;
+	//same as horizontalRaySpacing, but for vertical raycasts
 	float verticalRaySpacing;
 
+	//the maximum angle (in degrees) of a slope that can be climbed by a player.
+	float maxClimbAngle = 70;
+	//the maximum angle of a slope that can be descended by a player (a player can still "go down" a slope
+	//that is steeper than this, but is not automatically connected to the ground while doing so.
+	float maxDescendAngle = 60;
+
+	//While this could technically be achieved using camera.main, I figured that storing the camera as an
+	//object with a shorter name would be more convenient, considering how frequently I manipulate its position
+	//and scaling.
 	public Camera cam;
+	//I use this float to store and manipulate the orthographicSize of the stored camera; this is used to
+	//effectively "zoom out" when moving at high velocities, and then zoom back in when not.
 	float camSize;
+	//This Vector3 is used to store and manipulate the position of the main camera; this is primarily used for
+	//tracking the camera to the position of the player after the player has moved past the starting position,
+	//but is also used to shift the camera's position based on how fast the player is moving/in what direction
 	Vector3 camPos;
 
+	//This is the game object in which I store all sprites in the background of the scene; this is so that I
+	//can move them all in parallax with the player, without having to add a script to each individual object.
 	public GameObject background;
 	Vector3 backgroundPos;
-	bool backgroundLerping;
 
-	bool touchingEnemy;
-	bool hitStun;
-	float dirHit;
-
+	//this is essentially the portion of the player which interacts with objects within the level; literally,
+	//it sets the bounds from which raycasts originate, which are then what interacts with the environment.
 	public BoxCollider2D col;
+	//references a struct set at the end of the script, allowing easy access to Vector2 variables referencing
+	//the four corners of the player's collider.
 	RaycastOrigins raycastOrigins;
+	//referencing another established struct which allows easy storage of the information that a player is colliding
+	//with something to the left, right, top, or bottom; also used to store various information relating to slope
+	//collisions
 	public collisionInfo collisions;
 
-	// Use this for initialization
+
 	void Start () {
+		//this is a bit recommended by the 2D platformer controller tutorial that I was using for reference;
+		//it ensures that, whether you have assigned the player's box collider to the script within the inspector,
+		//you will still always have it assigned.
 		col = GetComponent<BoxCollider2D>();
 		CalculateRaySpacing ();
+		//sets the starting position of the camera
 		camPos = new Vector3(0,0,-10);
+		//References a static bool in the Checkpoint script to see if the player has reached a checkpoint; if so,
+		//reloads the scene but starting the player and camera at the position of that checkpoint.
 		if (Checkpoint.checkpointReached) {
 			transform.position = Checkpoint.checkpointPos;
 			camPos.x = Checkpoint.checkpointPos.x;
@@ -55,9 +94,11 @@ public class Controller2D : MonoBehaviour {
 	}
 
 	public void Move(Vector3 velocity) {
-		Debug.Log (cam.transform.position);
+		//resets all collision info to false, so that collisions are only determined on a frame-by-frame basis
 		collisions.Reset ();
+		//sets the origins of the collision-detecting raycasts to the current (modified) bounds of the player's collider
 		UpdateRaycastOrigins ();
+		//
 		collisions.velocityOld = velocity;
 
 		//implement change in slope velocity here; should be after setting lightCounter variable, before translation (including altered translation for slope upward movement)
@@ -73,7 +114,7 @@ public class Controller2D : MonoBehaviour {
 			VerticalCollisions (ref velocity);
 
 		transform.Translate (velocity);
-//		Debug.Log (transform.position.x);
+		
 		if (transform.position.x > 0 || camPos.x > 0) {
 			camPos.x += velocity.x;
 			if (camPos.x < 0) {
@@ -92,9 +133,6 @@ public class Controller2D : MonoBehaviour {
 			if (transform.position.x < 0) {
 				backgroundPos.x = 0;
 			}
-
-
-			//current issue is that background snaps back when running back to start
 
 			backgroundPos.x += 1.5f * 0.75f * Player.lightCounter;
 			backgroundPos.x += 0.75f * 0.75f * Player.velocityCamVar;
@@ -118,8 +156,6 @@ public class Controller2D : MonoBehaviour {
 		if (transform.position.x < 0) {
 			backgroundPos.x = 0;
 			background.transform.position = backgroundPos;
-//			backgroundLerping = true;
-//			StartCoroutine (backgroundLerpBack ());
 		}
 		cam.orthographicSize = camSize + Mathf.Abs(Player.lightCounter);
 	}
@@ -189,6 +225,10 @@ public class Controller2D : MonoBehaviour {
 				//this means that another raycast in the loop can't accidentally hit a further object than the one in this instance
 				rayLength = hit.distance;
 
+				if (hit.collider.tag == "Barrier" && !Player.isInvuln) {
+					gameObject.SendMessage ("playerHit");
+				}
+
 				if (collisions.climbingSlope) {
 					velocity.y = Mathf.Tan (collisions.slopeAngle * Mathf.Deg2Rad) * Mathf.Abs (velocity.x);
 				}
@@ -214,6 +254,24 @@ public class Controller2D : MonoBehaviour {
 					collisions.right = true;
 
 				gameObject.SendMessage ("playerHit");
+			}
+
+			RaycastHit2D hitEnemy2 = Physics2D.Raycast (rayOrigin, Vector2.right * directionX, rayLength, enemyMask2);
+
+			if (hitEnemy2 && Player.isInvuln == false) {
+				rayLength = hit.distance;
+				if (Mathf.Abs (Player.lightCounter) > 0) {
+					hitEnemy2.collider.SendMessage ("Death");
+					health += 1;
+				} else {
+					
+					if (directionX == -1)
+						collisions.left = true;
+					if (directionX == 1)
+						collisions.right = true;
+
+					gameObject.SendMessage ("playerHit");
+				}
 			}
 		}
 	}
@@ -286,6 +344,24 @@ public class Controller2D : MonoBehaviour {
 				velocity.y = (hit.distance - skinWidth) * directionY;
 				gameObject.SendMessage ("bounceOnEnemy");
 				hitEnemy.collider.gameObject.SendMessageUpwards ("Death");
+			}
+
+			RaycastHit2D hitEnemy2 = Physics2D.Raycast (rayOrigin, Vector2.up * directionY, rayLength, enemyMask2);
+
+			if (hitEnemy2 && Player.isInvuln == false) {
+				rayLength = hit.distance;
+				if (Mathf.Abs (Player.lightCounter) > 0) {
+					velocity.y = (hit.distance - skinWidth) * directionY;
+					gameObject.SendMessage ("bounceOnEnemy");
+					hitEnemy2.collider.gameObject.SendMessageUpwards ("Death");
+					health += 1;
+				} else {
+
+					velocity.y = (hit.distance - skinWidth) * directionY;
+					gameObject.SendMessage ("bounceOnEnemy2");
+
+					gameObject.SendMessage ("playerHit");
+				}
 			}
 		}
 

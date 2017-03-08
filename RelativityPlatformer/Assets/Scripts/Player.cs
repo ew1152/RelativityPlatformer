@@ -6,17 +6,6 @@ using UnityEngine.SceneManagement;
 [RequireComponent (typeof (Controller2D))]
 public class Player : MonoBehaviour {
 
-	//NOTE: currently having camera zoom out/pan in direction of movement before
-	//reaching max velocity by increasing lightCounter starting at 3/4 of maxSpeed;
-	//however, this is not ideal, as you reach "light speed" too quickly, and the 
-	//immediate camera movement paired with still-increasing velocity is a bit too jarring.
-	//You can fix this in a number of ways:
-	//1. Create a separate static variable that increments with speed, probably starting
-	//at 1/2 of maxSpeed, and implement the camera effects using this variable (likely in
-	//addition to, not in replacement of, what you have now).
-	//2. Decrease moveAccel. You may want to do this anyways, just as a balancing thing.
-	//(Side note: may want to also decrease maxSpeed, just in general)
-
 	public float maxJumpHeight = 4;
 	public float jumpApexTime = .4f;
 	float maxFallSpeed;
@@ -24,17 +13,21 @@ public class Player : MonoBehaviour {
 	public float moveSpeed;
 	public float moveAccel;
 	float startingSpeed = 6;
-	float maxSpeed = 30;
+	public float maxSpeed = 30;
 	public static float lightCounter;
 	public static float velocityCamVar;
 	float maxVelocityCamVar;
-	float maxLight = 3;
+	public static float maxLight = 3;
 	float gravity;
 	float jumpVel;
 	public static Vector3 velocity;
+	public GameObject deathScreen;
+
+	public static float xPos;
 
 	public static bool isInvuln;
 	bool hasJumped;
+	bool hasDied;
 	bool right;
 	bool left;
 	public static bool runningRight;
@@ -44,6 +37,8 @@ public class Player : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+		hasDied = false;
+		isInvuln = false;
 		moveAccel = 10;
 		controller = GetComponent<Controller2D>();
 		gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
@@ -55,15 +50,19 @@ public class Player : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		if (transform.position.y < -8) {
+		xPos = transform.position.x;
+		if (transform.position.y < -8 && !hasDied) {
+			hasDied = true;
 			Controller2D.health = 0;
 			isInvuln = false;
-			SceneManager.LoadScene ("Main");
+			Controller2D.lives -= 1;
+			if (Controller2D.lives >= 0)
+				deathScreen.SetActive(true);
 		}
 //		Debug.Log (velocityCamVar);
 //		Debug.Log(moveSpeed + " " + velocity.x);
 
-		//current bug: since 
+
 		if (controller.collisions.right || controller.collisions.left)
 			moveSpeed = 0;
 
@@ -71,18 +70,19 @@ public class Player : MonoBehaviour {
 			velocity.y = 0;
 
 		Vector2 input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
-//		if (input.x == 1 && velocity.x < maxSpeed) {
-//			moveSpeed += moveAccel * Time.deltaTime;
-//			speedCounter += Time.deltaTime;
-//		} else if (input.x != 1 && input.x != -1 && velocity.x > 0) {
-//			moveSpeed -= moveAccel * 2;
-//		}
-//		if (input.x == -1 && velocity.x > -maxSpeed) {
-//			moveSpeed -= moveAccel * Time.deltaTime;
-//			speedCounter += Time.deltaTime;
-//		} else if (input.x != -1 && input.x != 1 && velocity.x < 0) {
-//			moveSpeed += moveAccel * 2;
-//		}
+		if (input.y < 0 && controller.collisions.below) {
+			if (moveSpeed < 0) {
+				moveSpeed += 4 * moveAccel * Time.deltaTime;
+
+				lightReturnUp (4);
+				lightReturnDown (4);
+			}
+			if (moveSpeed > 0) {
+				moveSpeed -= 4 * moveAccel * Time.deltaTime;
+				lightReturnDown (4);
+				lightReturnUp (4);
+			}
+		}
 		if (input.x > 0) {
 //			Debug.Log (moveSpeed + " " + moveAccel + " " + lightCounter);
 
@@ -206,17 +206,17 @@ public class Player : MonoBehaviour {
 		}
 
 
-		if (Input.GetKeyDown (KeyCode.Space) && controller.collisions.below && !controller.collisions.above) {
+		if ((Input.GetKeyDown (KeyCode.Space) || Input.GetKeyDown (KeyCode.W) || Input.GetKeyDown (KeyCode.UpArrow)) && controller.collisions.below && !controller.collisions.above) {
 			velocity.y = jumpVel;
-			hasJumped = true;
+			jumpBuffer ();
 		}
 
 //		if (controller.collisions.below)
 //			hasJumped = false;
 
-		if (!controller.collisions.below && hasJumped) {
-			if (Input.GetKeyUp (KeyCode.Space) && velocity.y > 0) {
-				gravity = -250;
+		if (!controller.collisions.below) {
+			if ((Input.GetKeyUp (KeyCode.Space) || Input.GetKeyUp (KeyCode.W) || Input.GetKeyUp (KeyCode.UpArrow)) && velocity.y > 0) {
+				gravity = -200;
 			}
 			if (velocity.y < 0) {
 				gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
@@ -234,19 +234,40 @@ public class Player : MonoBehaviour {
 		} else {
 			runningLeft = false;
 		}
-
+		if (hasDied) {
+			moveSpeed = 0;
+			Color alphaStorage;
+			alphaStorage.r = 1;
+			alphaStorage.g = 1;
+			alphaStorage.b = 1;
+			alphaStorage.a = 0;
+			gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+		}
 		velocity.x = moveSpeed;
 		velocity.y += gravity * Time.deltaTime;
 		controller.Move (velocity * Time.deltaTime);
 //		Debug.Log (lightCounter + " " + moveSpeed + " " + input.x);
 	}
 
+	IEnumerator jumpBuffer() {
+		hasJumped = true;
+		yield return null;
+		yield return null;
+		yield return null;
+		hasJumped = false;
+	}
+
 	void bounceOnEnemy() {
 		gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
 		velocity.y = jumpVel / 2;
-		if (Input.GetKey (KeyCode.Space)) {
+		if (Input.GetKey (KeyCode.Space) || Input.GetKey (KeyCode.W) || Input.GetKey (KeyCode.UpArrow)) {
 			velocity.y = jumpVel;
 		}
+	}
+
+	void bounceOnEnemy2() {
+		gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
+		velocity.y = jumpVel / 3;
 	}
 		
 
@@ -258,47 +279,59 @@ public class Player : MonoBehaviour {
 		alphaStorage.b = gameObject.GetComponent<SpriteRenderer>().color.b;
 		alphaStorage.a = 1;
 		Controller2D.health -= 1;
-		if (Controller2D.health <= 0) {
+		if (Controller2D.health <= 0 && !hasDied) {
+			hasDied = true;
 			isInvuln = false;
-			SceneManager.LoadScene ("Main");
+			alphaStorage.a = 0;
+			gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			Controller2D.lives -= 1;
+			if (Controller2D.lives >= 0)
+				deathScreen.SetActive(true);
 		}
-		float invulnTimer = 0;
-		while (invulnTimer < 0.75f) {
-			invulnTimer += Time.deltaTime;
-			if (invulnTimer % 0.25f > 0.125f) {
-				alphaStorage.a = 0;
-				gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
-			} else {
-				alphaStorage.a = 1;
-				gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+		if (!hasDied) {
+			float invulnTimer = 0;
+			while (invulnTimer < 0.75f) {
+				invulnTimer += Time.deltaTime;
+				if (invulnTimer % 0.25f > 0.125f) {
+					alphaStorage.a = 0;
+					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+				} else {
+					alphaStorage.a = 1;
+					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+				}
+				yield return null;
 			}
-			yield return null;
-		}
-		while (invulnTimer < 1.5f) {
-			invulnTimer += Time.deltaTime;
-			if (invulnTimer % 0.125f > 0.0625f) {
-				alphaStorage.a = 0;
-				gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
-			} else {
-				alphaStorage.a = 1;
-				gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			while (invulnTimer < 1.5f) {
+				invulnTimer += Time.deltaTime;
+				if (invulnTimer % 0.125f > 0.0625f) {
+					alphaStorage.a = 0;
+					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+				} else {
+					alphaStorage.a = 1;
+					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+				}
+				yield return null;
 			}
-			yield return null;
-		}
-		while (invulnTimer < 2f) {
-			invulnTimer += Time.deltaTime;
-			if (invulnTimer % 0.0625f > 0.03125f) {
-				alphaStorage.a = 0;
-				gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
-			} else {
-				alphaStorage.a = 1;
-				gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			while (invulnTimer < 2f) {
+				invulnTimer += Time.deltaTime;
+				if (invulnTimer % 0.0625f > 0.03125f) {
+					alphaStorage.a = 0;
+					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+				} else {
+					alphaStorage.a = 1;
+					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+				}
+				yield return null;
 			}
-			yield return null;
+			alphaStorage.a = 1;
+			gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			isInvuln = false;
 		}
-		alphaStorage.a = 1;
-		gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
-		isInvuln = false;
+	}
+
+	void Restart() {
+		deathScreen.SetActive (false);
+		SceneManager.LoadScene ("Main");
 	}
 
 	void lightReturnUp(float rate) {
