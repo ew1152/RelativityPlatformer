@@ -4,6 +4,20 @@ using UnityEngine;
 
 public class Enemy2 : MonoBehaviour {
 
+	public ParticleSystem particles;
+	public GameObject gear;
+	public Animator anim;
+	public AnimationClip angry;
+	public AnimationClip vuln;
+
+	bool isVuln;
+
+	float emissionRate;
+	Color partAlphaStorage;
+	float startRed;
+	float startGreen;
+	float startBlue;
+
 	public LayerMask collisionMask;
 	public LayerMask slopeMask;
 	public LayerMask playerMask;
@@ -43,6 +57,14 @@ public class Enemy2 : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+		emissionRate = particles.emission.rateOverTime.constant;
+		startRed = particles.startColor.r;
+		startGreen = particles.startColor.g;
+		startBlue = particles.startColor.b;
+		partAlphaStorage.r = startRed;
+		partAlphaStorage.g = startGreen;
+		partAlphaStorage.b = startBlue;
+		partAlphaStorage.a = 1;
 		vulnTimer = 0;
 		playerEffective = false;
 		col = GetComponent<BoxCollider2D>();
@@ -89,7 +111,7 @@ public class Enemy2 : MonoBehaviour {
 
 			Move (velocity * Time.deltaTime);
 		}
-
+		animations ();
 	}
 
 	void Move(Vector3 velocity) {
@@ -105,6 +127,33 @@ public class Enemy2 : MonoBehaviour {
 
 
 		transform.Translate (velocity);
+	}
+
+	void animations() {
+		if (velocity.x < 0) {
+			gear.transform.localEulerAngles = new Vector3 (0, 0);
+		}
+		if (velocity.x > 0) {
+			gear.transform.localEulerAngles = new Vector3 (0, 180);
+		}
+		if (Mathf.Abs (Player.lightCounter) > 0) {
+			anim.Play ("enemy gear vulnerable");
+			var em = particles.emission;
+			em.rateOverTime = emissionRate - (Mathf.Abs(Player.lightCounter) * 0.75f * emissionRate);
+			partAlphaStorage.a = 1 - (Mathf.Abs (Player.lightCounter) / 6);
+			partAlphaStorage.r = 1 - (Mathf.Abs (Player.lightCounter) / 6);
+			partAlphaStorage.g = 1;
+			partAlphaStorage.b = 1 - (Mathf.Abs (Player.lightCounter) / 6);
+		} else {
+			anim.Play ("enemy gear animation");
+			var em = particles.emission;
+			em.rateOverTime = emissionRate;
+			partAlphaStorage.a = 1;
+			partAlphaStorage.r = startRed;
+			partAlphaStorage.g = startGreen;
+			partAlphaStorage.b = startBlue;
+		}
+		particles.startColor = partAlphaStorage;
 	}
 
 	void Vulnerable() {

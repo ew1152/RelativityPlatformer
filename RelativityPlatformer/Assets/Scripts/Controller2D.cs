@@ -263,6 +263,7 @@ public class Controller2D : MonoBehaviour {
 				if (Mathf.Abs (Player.lightCounter) > 0) {
 					hitEnemy2.collider.SendMessage ("Death");
 					health += 1;
+					gameObject.BroadcastMessage ("Gear");
 				} else {
 					
 					if (directionX == -1)
@@ -351,10 +352,11 @@ public class Controller2D : MonoBehaviour {
 			if (hitEnemy2 && Player.isInvuln == false) {
 				rayLength = hit.distance;
 				if (Mathf.Abs (Player.lightCounter) > 0) {
-					velocity.y = (hit.distance - skinWidth) * directionY;
-					gameObject.SendMessage ("bounceOnEnemy");
+//					velocity.y = (hit.distance - skinWidth) * directionY;
+//					gameObject.SendMessage ("bounceOnEnemy");
 					hitEnemy2.collider.gameObject.SendMessageUpwards ("Death");
 					health += 1;
+					gameObject.BroadcastMessage ("Gear");
 				} else {
 
 					velocity.y = (hit.distance - skinWidth) * directionY;

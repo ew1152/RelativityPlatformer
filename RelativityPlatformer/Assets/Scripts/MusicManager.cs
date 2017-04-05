@@ -1,8 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Audio;
 
 public class MusicManager : MonoBehaviour {
+
+	public AudioMixer mixerMain;
 
 	public AudioSource musicMain;
 	public AudioSource musicBkgd;
@@ -46,7 +49,7 @@ public class MusicManager : MonoBehaviour {
 			musicLight.clip = musicLightLoop;
 			musicLight.Play ();
 		}
-		if (Mathf.Abs(Player.lightCounter) > 3 - (3 * mainAmp) && mainAmp > 0.6f) {
+		if (Mathf.Abs(Player.lightCounter) > 3 - (3 * mainAmp) && mainAmp > 0.7f) {
 			mainAmp -= 0.01f;
 		}
 		if (Mathf.Abs(Player.lightCounter) < 3 - (3 * mainAmp) && mainAmp < 1f) {
@@ -67,5 +70,7 @@ public class MusicManager : MonoBehaviour {
 		musicMain.volume = mainAmp;
 		musicBkgd.volume = bkgdAmp;
 		musicLight.volume = lightAmp;
+
+		mixerMain.SetFloat("Main Lowpass Freq", (16000 - (4000 * Mathf.Abs(Player.lightCounter))));
 	}
 }

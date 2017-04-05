@@ -9,6 +9,8 @@ public class Enemy1 : MonoBehaviour {
 	public LayerMask playerMask;
 	public LayerMask blockMask;
 
+	public GameObject body;
+
 	const float skinWidth = .02f;
 	public int horizontalRayCount = 4;
 	public int verticalRayCount = 4;
@@ -88,6 +90,13 @@ public class Enemy1 : MonoBehaviour {
 
 		if (velocity.y != 0)
 			VerticalCollisions (ref velocity);
+
+		if (velocity.x < 0) {
+			body.transform.localEulerAngles = new Vector3 (0, 0);
+		}
+		if (velocity.x > 0) {
+			body.transform.localEulerAngles = new Vector3 (0, 180);
+		}
 
 		enemyShading.r = 1 - Mathf.Abs(0.05f * Player.lightCounter);
 		enemyShading.g = 1 - Mathf.Abs(0.05f * Player.lightCounter);

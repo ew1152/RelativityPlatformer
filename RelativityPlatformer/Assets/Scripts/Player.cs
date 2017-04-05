@@ -6,18 +6,31 @@ using UnityEngine.SceneManagement;
 [RequireComponent (typeof (Controller2D))]
 public class Player : MonoBehaviour {
 
+	public GameObject sprite;
+
+	//maximum height which the jump can reach
 	public float maxJumpHeight = 4;
+	//amount of time it takes to get to the apex of the jump
 	public float jumpApexTime = .4f;
+	//not currently used
 	float maxFallSpeed;
 
+	//X-axis movement speed which is passed to the velocity vector and then to the Controller2D script
 	public float moveSpeed;
+	//rate at which movement speed accelerates
 	public float moveAccel;
+	//starting speed to which moveSpeed accelerates to much faster
 	float startingSpeed = 6;
+	//maximum moveSpeed
 	public float maxSpeed = 30;
+	//float tracking the time at which the player has been moving at max velocity, i.e. "additional velocity"
+	//at which the player is ramping up toward the speed of light
 	public static float lightCounter;
+	public static float maxLight = 3;
+	//float controlling camera movement based on player velocity, accessed in Controller2D
 	public static float velocityCamVar;
 	float maxVelocityCamVar;
-	public static float maxLight = 3;
+
 	float gravity;
 	float jumpVel;
 	public static Vector3 velocity;
@@ -26,7 +39,6 @@ public class Player : MonoBehaviour {
 	public static float xPos;
 
 	public static bool isInvuln;
-	bool hasJumped;
 	bool hasDied;
 	bool right;
 	bool left;
@@ -35,7 +47,6 @@ public class Player : MonoBehaviour {
 
 	Controller2D controller;
 
-	// Use this for initialization
 	void Start () {
 		hasDied = false;
 		isInvuln = false;
@@ -48,7 +59,6 @@ public class Player : MonoBehaviour {
 		maxVelocityCamVar = 1.52f;
 	}
 	
-	// Update is called once per frame
 	void Update () {
 		xPos = transform.position.x;
 		if (transform.position.y < -8 && !hasDied) {
@@ -208,11 +218,8 @@ public class Player : MonoBehaviour {
 
 		if ((Input.GetKeyDown (KeyCode.Space) || Input.GetKeyDown (KeyCode.W) || Input.GetKeyDown (KeyCode.UpArrow)) && controller.collisions.below && !controller.collisions.above) {
 			velocity.y = jumpVel;
-			jumpBuffer ();
+			gameObject.BroadcastMessage ("Jump");
 		}
-
-//		if (controller.collisions.below)
-//			hasJumped = false;
 
 		if (!controller.collisions.below) {
 			if ((Input.GetKeyUp (KeyCode.Space) || Input.GetKeyUp (KeyCode.W) || Input.GetKeyUp (KeyCode.UpArrow)) && velocity.y > 0) {
@@ -241,30 +248,26 @@ public class Player : MonoBehaviour {
 			alphaStorage.g = 1;
 			alphaStorage.b = 1;
 			alphaStorage.a = 0;
-			gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 		}
 		velocity.x = moveSpeed;
 		velocity.y += gravity * Time.deltaTime;
 		controller.Move (velocity * Time.deltaTime);
-//		Debug.Log (lightCounter + " " + moveSpeed + " " + input.x);
+		animations ();
 	}
 
-	IEnumerator jumpBuffer() {
-		hasJumped = true;
-		yield return null;
-		yield return null;
-		yield return null;
-		hasJumped = false;
-	}
 
+	//for when killing enemy1 from the top
 	void bounceOnEnemy() {
 		gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
 		velocity.y = jumpVel / 2;
 		if (Input.GetKey (KeyCode.Space) || Input.GetKey (KeyCode.W) || Input.GetKey (KeyCode.UpArrow)) {
 			velocity.y = jumpVel;
 		}
+		gameObject.BroadcastMessage ("Jump2");
 	}
 
+	//for when hitting an invulnerable enemy from the top
 	void bounceOnEnemy2() {
 		gravity = -(2 * maxJumpHeight) / (jumpApexTime * jumpApexTime);
 		velocity.y = jumpVel / 3;
@@ -274,16 +277,16 @@ public class Player : MonoBehaviour {
 	public IEnumerator playerHit() {
 		isInvuln = true;
 		Color alphaStorage;
-		alphaStorage.r = gameObject.GetComponent<SpriteRenderer>().color.r;
-		alphaStorage.g = gameObject.GetComponent<SpriteRenderer>().color.g;
-		alphaStorage.b = gameObject.GetComponent<SpriteRenderer>().color.b;
+		alphaStorage.r = sprite.GetComponent<SpriteRenderer>().color.r;
+		alphaStorage.g = sprite.GetComponent<SpriteRenderer>().color.g;
+		alphaStorage.b = sprite.GetComponent<SpriteRenderer>().color.b;
 		alphaStorage.a = 1;
 		Controller2D.health -= 1;
 		if (Controller2D.health <= 0 && !hasDied) {
 			hasDied = true;
 			isInvuln = false;
 			alphaStorage.a = 0;
-			gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 			Controller2D.lives -= 1;
 			if (Controller2D.lives >= 0)
 				deathScreen.SetActive(true);
@@ -294,10 +297,10 @@ public class Player : MonoBehaviour {
 				invulnTimer += Time.deltaTime;
 				if (invulnTimer % 0.25f > 0.125f) {
 					alphaStorage.a = 0;
-					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+					sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 				} else {
 					alphaStorage.a = 1;
-					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+					sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 				}
 				yield return null;
 			}
@@ -305,10 +308,10 @@ public class Player : MonoBehaviour {
 				invulnTimer += Time.deltaTime;
 				if (invulnTimer % 0.125f > 0.0625f) {
 					alphaStorage.a = 0;
-					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+					sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 				} else {
 					alphaStorage.a = 1;
-					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+					sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 				}
 				yield return null;
 			}
@@ -316,16 +319,30 @@ public class Player : MonoBehaviour {
 				invulnTimer += Time.deltaTime;
 				if (invulnTimer % 0.0625f > 0.03125f) {
 					alphaStorage.a = 0;
-					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+					sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 				} else {
 					alphaStorage.a = 1;
-					gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+					sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 				}
 				yield return null;
 			}
 			alphaStorage.a = 1;
-			gameObject.GetComponent<SpriteRenderer> ().color = alphaStorage;
+			sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
 			isInvuln = false;
+		}
+	}
+
+	void SFX() {
+		
+	}
+
+	void animations() {
+		Vector2 input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
+		if (input.x > 0) {
+			sprite.transform.localEulerAngles = new Vector3 (0, 0);
+		}
+		if (input.x < 0) {
+			sprite.transform.localEulerAngles = new Vector3 (0, 180);
 		}
 	}
 
