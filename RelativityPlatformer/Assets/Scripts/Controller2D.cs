@@ -101,8 +101,6 @@ public class Controller2D : MonoBehaviour {
 		//
 		collisions.velocityOld = velocity;
 
-		//implement change in slope velocity here; should be after setting lightCounter variable, before translation (including altered translation for slope upward movement)
-
 		if (velocity.y < 0) {
 			DescendSlope (ref velocity);
 		}

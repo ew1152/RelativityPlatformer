@@ -27,7 +27,7 @@ public class SFXmanager : MonoBehaviour {
 
 	void Jump2() {
 		int randInt = Random.Range (0, 7);
-		jumpSource.pitch = Random.Range (1.1f, 1.2f);
+		jumpSource.pitch = Random.Range (1.2f, 1.3f);
 		jumpSource.PlayOneShot (jumpClips [randInt]);
 	}
 
