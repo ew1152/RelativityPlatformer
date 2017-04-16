@@ -8,6 +8,9 @@ public class Player : MonoBehaviour {
 
 	public GameObject sprite;
 
+	public GameObject deathParticles;
+	public GameObject deathParticles2;
+
 	//maximum height which the jump can reach
 	public float maxJumpHeight = 4;
 	//amount of time it takes to get to the apex of the jump
@@ -62,6 +65,7 @@ public class Player : MonoBehaviour {
 	void Update () {
 		xPos = transform.position.x;
 		if (transform.position.y < -8 && !hasDied) {
+			Instantiate (deathParticles, new Vector3(gameObject.transform.position.x, -12, 0), Quaternion.identity);
 			hasDied = true;
 			Controller2D.health = 0;
 			isInvuln = false;
@@ -284,6 +288,7 @@ public class Player : MonoBehaviour {
 		Controller2D.health -= 1;
 		if (Controller2D.health <= 0 && !hasDied) {
 			hasDied = true;
+			Instantiate (deathParticles2, new Vector3(gameObject.transform.position.x, gameObject.transform.position.y, 0), Quaternion.identity);
 			isInvuln = false;
 			alphaStorage.a = 0;
 			sprite.GetComponent<SpriteRenderer> ().color = alphaStorage;
