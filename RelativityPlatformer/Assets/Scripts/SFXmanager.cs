@@ -33,8 +33,13 @@ public class SFXmanager : MonoBehaviour {
 
 	void Gear() {
 		int randInt = Random.Range (0, 3);
-		gearSource.pitch = Random.Range (0.8f, 1f);
+		gearSource.pitch = 0.8f;
 		gearSource.volume = Random.Range (0.8f, 1f);
+		if (gearSource.isPlaying) {
+			gearSource.Stop ();
+			gearSource.pitch += 0.15f;
+			Debug.Log (gearSource.pitch);
+		}
 		gearSource.PlayOneShot (gearClips [randInt]);
 	}
 

@@ -8,6 +8,8 @@ public class Player : MonoBehaviour {
 
 	public GameObject sprite;
 
+	public Animator anim;
+
 	public GameObject deathParticles;
 	public GameObject deathParticles2;
 
@@ -33,6 +35,9 @@ public class Player : MonoBehaviour {
 	//float controlling camera movement based on player velocity, accessed in Controller2D
 	public static float velocityCamVar;
 	float maxVelocityCamVar;
+
+	bool jumpBuffered;
+	public float jumpBufferTime;
 
 	float gravity;
 	float jumpVel;
@@ -84,19 +89,6 @@ public class Player : MonoBehaviour {
 			velocity.y = 0;
 
 		Vector2 input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
-		if (input.y < 0 && controller.collisions.below) {
-			if (moveSpeed < 0) {
-				moveSpeed += 4 * moveAccel * Time.deltaTime;
-
-				lightReturnUp (4);
-				lightReturnDown (4);
-			}
-			if (moveSpeed > 0) {
-				moveSpeed -= 4 * moveAccel * Time.deltaTime;
-				lightReturnDown (4);
-				lightReturnUp (4);
-			}
-		}
 		if (input.x > 0) {
 //			Debug.Log (moveSpeed + " " + moveAccel + " " + lightCounter);
 
@@ -219,14 +211,72 @@ public class Player : MonoBehaviour {
 			velocityCamVar = 0;
 		}
 
+		if (input.y < 0 && controller.collisions.below) {
+			anim.SetBool ("crouch", true);
+			if (moveSpeed < 0) {
+				moveSpeed += 4 * moveAccel * Time.deltaTime;
 
+				lightReturnUp (4);
+				lightReturnDown (4);
+			}
+			if (moveSpeed > 0) {
+				moveSpeed -= 4 * moveAccel * Time.deltaTime;
+				lightReturnDown (4);
+				lightReturnUp (4);
+			}
+			if (moveSpeed > -2 && moveSpeed < 0) {
+				moveSpeed = 0;
+				lightReturnUp (4);
+			}
+			if (moveSpeed < 2 && moveSpeed > 0) {
+				moveSpeed = 0;
+				lightReturnUp (4);
+			}
+			if (moveSpeed > maxSpeed / 2 && velocityCamVar < maxVelocityCamVar) {
+				if (input.x > 0)
+					velocityCamVar += Time.deltaTime;
+				else if (input.x < 0)
+					velocityCamVar -= 3 * Time.deltaTime;
+				else
+					velocityCamVar -= 2 * Time.deltaTime;
+			} 
+			if (moveSpeed < -maxSpeed / 2 && velocityCamVar > -maxVelocityCamVar) {
+				if (input.x < 0)
+					velocityCamVar -= Time.deltaTime;
+				else if (input.x > 0)
+					velocityCamVar += 3 * Time.deltaTime;
+				else
+					velocityCamVar += 2 * Time.deltaTime;
+			} 
+			else if (moveSpeed >= -maxSpeed / 2 && moveSpeed <= maxSpeed / 2) {
+				if (velocityCamVar < -Time.deltaTime)
+					velocityCamVar += 2 * Time.deltaTime;
+				else if (velocityCamVar > Time.deltaTime)
+					velocityCamVar -= 2 * Time.deltaTime;
+				else
+					velocityCamVar = 0;
+			}
+		} else {
+			//			anim.Play ("Idle");
+			anim.SetBool ("crouch", false);
+		}
+
+		if ((Input.GetKeyDown (KeyCode.Space) || Input.GetKeyDown (KeyCode.W) || Input.GetKeyDown (KeyCode.UpArrow)) && !controller.collisions.below) {
+			jumpBuffered = true;
+			StartCoroutine(bufferJump ());
+		}
 		if ((Input.GetKeyDown (KeyCode.Space) || Input.GetKeyDown (KeyCode.W) || Input.GetKeyDown (KeyCode.UpArrow)) && controller.collisions.below && !controller.collisions.above) {
 			velocity.y = jumpVel;
 			gameObject.BroadcastMessage ("Jump");
 		}
+		if (jumpBuffered && controller.collisions.below && !controller.collisions.above) {
+			velocity.y = jumpVel;
+			gameObject.BroadcastMessage ("Jump");
+			jumpBuffered = false;
+		}
 
 		if (!controller.collisions.below) {
-			if ((Input.GetKeyUp (KeyCode.Space) || Input.GetKeyUp (KeyCode.W) || Input.GetKeyUp (KeyCode.UpArrow)) && velocity.y > 0) {
+			if ((!Input.GetKey (KeyCode.Space) && !Input.GetKey (KeyCode.W) && !Input.GetKey (KeyCode.UpArrow)) && velocity.y > 0) {
 				gravity = -200;
 			}
 			if (velocity.y < 0) {
@@ -260,6 +310,10 @@ public class Player : MonoBehaviour {
 		animations ();
 	}
 
+	IEnumerator bufferJump() {
+		yield return new WaitForSeconds (jumpBufferTime);
+		jumpBuffered = false;
+	}
 
 	//for when killing enemy1 from the top
 	void bounceOnEnemy() {
